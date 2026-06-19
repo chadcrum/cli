@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const defaultControlPlaneURL = "http://localhost:8080"
+
 type contextKey struct{}
 
 // WithConfig stores a Config in the given context.
@@ -19,7 +21,7 @@ func WithConfig(ctx context.Context, cfg *Config) context.Context {
 	return context.WithValue(ctx, contextKey{}, cfg)
 }
 
-// FromContext retrieves the Config from a context. Returns nil if not present.
+// FromContext retrieves a Config from a context. Returns nil if not present.
 func FromContext(ctx context.Context) *Config {
 	cfg, _ := ctx.Value(contextKey{}).(*Config)
 	return cfg
@@ -32,13 +34,13 @@ func FromCommand(cmd *cobra.Command) *Config {
 
 // Config holds the resolved CLI configuration.
 type Config struct {
-	APIGatewayURL string `yaml:"api-gateway-url" mapstructure:"api-gateway-url"`
-	OutputFormat  string `yaml:"output-format" mapstructure:"output-format"`
-	Timeout       int    `yaml:"timeout" mapstructure:"timeout"`
-	TLSCACert     string `yaml:"tls-ca-cert" mapstructure:"tls-ca-cert"`
-	TLSClientCert string `yaml:"tls-client-cert" mapstructure:"tls-client-cert"`
-	TLSClientKey  string `yaml:"tls-client-key" mapstructure:"tls-client-key"`
-	TLSSkipVerify bool   `yaml:"tls-skip-verify" mapstructure:"tls-skip-verify"`
+	ControlPlaneURL string `yaml:"control-plane-url" mapstructure:"control-plane-url"`
+	OutputFormat    string `yaml:"output-format" mapstructure:"output-format"`
+	Timeout         int    `yaml:"timeout" mapstructure:"timeout"`
+	TLSCACert       string `yaml:"tls-ca-cert" mapstructure:"tls-ca-cert"`
+	TLSClientCert   string `yaml:"tls-client-cert" mapstructure:"tls-client-cert"`
+	TLSClientKey    string `yaml:"tls-client-key" mapstructure:"tls-client-key"`
+	TLSSkipVerify   bool   `yaml:"tls-skip-verify" mapstructure:"tls-skip-verify"`
 }
 
 // Load reads configuration from file, environment variables, and command-line
@@ -47,7 +49,7 @@ func Load(cmd *cobra.Command) (*Config, error) {
 	v := viper.New()
 
 	// Built-in defaults (REQ-CFG-050)
-	v.SetDefault("api-gateway-url", "http://localhost:9080")
+	v.SetDefault("control-plane-url", defaultControlPlaneURL)
 	v.SetDefault("output-format", "table")
 	v.SetDefault("timeout", 30)
 	v.SetDefault("tls-ca-cert", "")
@@ -57,7 +59,7 @@ func Load(cmd *cobra.Command) (*Config, error) {
 
 	// Environment variable binding (REQ-CFG-030)
 	v.SetEnvPrefix("DCM")
-	v.MustBindEnv("api-gateway-url", "DCM_API_GATEWAY_URL")
+	v.MustBindEnv("control-plane-url", "DCM_CONTROL_PLANE_URL")
 	v.MustBindEnv("output-format", "DCM_OUTPUT_FORMAT")
 	v.MustBindEnv("timeout", "DCM_TIMEOUT")
 	v.MustBindEnv("tls-ca-cert", "DCM_TLS_CA_CERT")
@@ -120,13 +122,13 @@ func configFilePath(cmd *cobra.Command) string {
 // unset flags don't override environment variables or config file values.
 func bindFlags(v *viper.Viper, cmd *cobra.Command) error {
 	flagToKey := map[string]string{
-		"api-gateway-url": "api-gateway-url",
-		"output":          "output-format",
-		"timeout":         "timeout",
-		"tls-ca-cert":     "tls-ca-cert",
-		"tls-client-cert": "tls-client-cert",
-		"tls-client-key":  "tls-client-key",
-		"tls-skip-verify": "tls-skip-verify",
+		"control-plane-url": "control-plane-url",
+		"output":            "output-format",
+		"timeout":           "timeout",
+		"tls-ca-cert":       "tls-ca-cert",
+		"tls-client-cert":   "tls-client-cert",
+		"tls-client-key":    "tls-client-key",
+		"tls-skip-verify":   "tls-skip-verify",
 	}
 
 	for flagName, configKey := range flagToKey {

@@ -14,7 +14,7 @@ import (
 // clearDCMEnvVars removes all DCM_* environment variables to isolate tests.
 func clearDCMEnvVars() {
 	envVars := []string{
-		"DCM_API_GATEWAY_URL",
+		"DCM_CONTROL_PLANE_URL",
 		"DCM_OUTPUT_FORMAT",
 		"DCM_TIMEOUT",
 		"DCM_CONFIG",
@@ -42,10 +42,9 @@ var _ = Describe("Configuration", func() {
 		clearDCMEnvVars()
 	})
 
-	// TC-U001: Load configuration from config file
 	Describe("TC-U001: Config file loading", func() {
-		It("should load api-gateway-url from config file", func() {
-			cfgPath := writeConfigFile("api-gateway-url: http://custom:9080\n")
+		It("should load control-plane-url from config file", func() {
+			cfgPath := writeConfigFile("control-plane-url: http://custom:8080\n")
 			cmd := commands.NewRootCommand()
 			cmd.SetArgs([]string{"--config", cfgPath, "version"})
 			cmd.SetOut(GinkgoWriter)
@@ -54,15 +53,14 @@ var _ = Describe("Configuration", func() {
 
 			cfg, err := config.Load(cmd)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(cfg.APIGatewayURL).To(Equal("http://custom:9080"))
+			Expect(cfg.ControlPlaneURL).To(Equal("http://custom:8080"))
 		})
 	})
 
-	// TC-U002: Environment variable overrides config file
 	Describe("TC-U002: Env var overrides config file", func() {
-		It("should use environment variable over config file value", func() {
-			cfgPath := writeConfigFile("api-gateway-url: http://file:9080\n")
-			GinkgoT().Setenv("DCM_API_GATEWAY_URL", "http://env:9080")
+		It("should use DCM_CONTROL_PLANE_URL over config file value", func() {
+			cfgPath := writeConfigFile("control-plane-url: http://file:8080\n")
+			GinkgoT().Setenv("DCM_CONTROL_PLANE_URL", "http://env:8080")
 
 			cmd := commands.NewRootCommand()
 			cmd.SetArgs([]string{"--config", cfgPath, "version"})
@@ -72,20 +70,19 @@ var _ = Describe("Configuration", func() {
 
 			cfg, err := config.Load(cmd)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(cfg.APIGatewayURL).To(Equal("http://env:9080"))
+			Expect(cfg.ControlPlaneURL).To(Equal("http://env:8080"))
 		})
 	})
 
-	// TC-U003: CLI flag overrides environment variable and config file
 	Describe("TC-U003: CLI flag overrides env var and config file", func() {
-		It("should use CLI flag over environment variable and config file", func() {
-			cfgPath := writeConfigFile("api-gateway-url: http://file:9080\n")
-			GinkgoT().Setenv("DCM_API_GATEWAY_URL", "http://env:9080")
+		It("should use --control-plane-url over environment and config file", func() {
+			cfgPath := writeConfigFile("control-plane-url: http://file:8080\n")
+			GinkgoT().Setenv("DCM_CONTROL_PLANE_URL", "http://env:8080")
 
 			cmd := commands.NewRootCommand()
 			cmd.SetArgs([]string{
 				"--config", cfgPath,
-				"--api-gateway-url", "http://flag:9080",
+				"--control-plane-url", "http://flag:8080",
 				"version",
 			})
 			cmd.SetOut(GinkgoWriter)
@@ -94,11 +91,10 @@ var _ = Describe("Configuration", func() {
 
 			cfg, err := config.Load(cmd)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(cfg.APIGatewayURL).To(Equal("http://flag:9080"))
+			Expect(cfg.ControlPlaneURL).To(Equal("http://flag:8080"))
 		})
 	})
 
-	// TC-U004: Default values applied when no config specified
 	Describe("TC-U004: Built-in defaults", func() {
 		It("should apply default values when no config file, env vars, or flags are set", func() {
 			cfgPath := filepath.Join(GinkgoT().TempDir(), "nonexistent.yaml")
@@ -110,7 +106,7 @@ var _ = Describe("Configuration", func() {
 
 			cfg, err := config.Load(cmd)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(cfg.APIGatewayURL).To(Equal("http://localhost:9080"))
+			Expect(cfg.ControlPlaneURL).To(Equal("http://localhost:8080"))
 			Expect(cfg.OutputFormat).To(Equal("table"))
 			Expect(cfg.Timeout).To(Equal(30))
 			Expect(cfg.TLSCACert).To(BeEmpty())
@@ -120,7 +116,6 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
-	// TC-U005: Missing config file does not cause failure
 	Describe("TC-U005: Missing config file", func() {
 		It("should not fail when the config file does not exist", func() {
 			cfgPath := filepath.Join(GinkgoT().TempDir(), "does-not-exist.yaml")
@@ -132,11 +127,10 @@ var _ = Describe("Configuration", func() {
 
 			cfg, err := config.Load(cmd)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(cfg.APIGatewayURL).To(Equal("http://localhost:9080"))
+			Expect(cfg.ControlPlaneURL).To(Equal("http://localhost:8080"))
 		})
 	})
 
-	// TC-U006: Custom config file path via --config flag
 	Describe("TC-U006: Custom config file via --config", func() {
 		It("should load configuration from a custom file path", func() {
 			cfgPath := writeConfigFile("timeout: 60\n")
@@ -152,7 +146,6 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
-	// TC-U007: Custom config file path via DCM_CONFIG environment variable
 	Describe("TC-U007: Custom config file via DCM_CONFIG", func() {
 		It("should load configuration from DCM_CONFIG path", func() {
 			cfgPath := writeConfigFile("timeout: 45\n")
@@ -170,7 +163,6 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
-	// TC-U008: All environment variables are supported
 	Describe("TC-U008: All environment variables", func() {
 		DescribeTable("should load configuration from each environment variable",
 			func(envVar, envValue, configField string, expected any) {
@@ -187,8 +179,8 @@ var _ = Describe("Configuration", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				switch configField {
-				case "APIGatewayURL":
-					Expect(cfg.APIGatewayURL).To(Equal(expected))
+				case "ControlPlaneURL":
+					Expect(cfg.ControlPlaneURL).To(Equal(expected))
 				case "OutputFormat":
 					Expect(cfg.OutputFormat).To(Equal(expected))
 				case "Timeout":
@@ -203,7 +195,7 @@ var _ = Describe("Configuration", func() {
 					Expect(cfg.TLSSkipVerify).To(Equal(expected))
 				}
 			},
-			Entry("DCM_API_GATEWAY_URL", "DCM_API_GATEWAY_URL", "http://e:9080", "APIGatewayURL", "http://e:9080"),
+			Entry("DCM_CONTROL_PLANE_URL", "DCM_CONTROL_PLANE_URL", "http://cp:8080", "ControlPlaneURL", "http://cp:8080"),
 			Entry("DCM_OUTPUT_FORMAT", "DCM_OUTPUT_FORMAT", "json", "OutputFormat", "json"),
 			Entry("DCM_TIMEOUT", "DCM_TIMEOUT", "60", "Timeout", 60),
 			Entry("DCM_TLS_CA_CERT", "DCM_TLS_CA_CERT", "/path/ca.pem", "TLSCACert", "/path/ca.pem"),

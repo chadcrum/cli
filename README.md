@@ -4,18 +4,17 @@
 
 ### 1.1 Purpose
 
-The DCM CLI (`dcm`) is the primary user-facing command-line interface for interacting with the DCM (Data Center Management) control plane. It provides commands for managing policies, service types, catalog items, catalog item instances, and service provider resources through the API Gateway.
+The DCM CLI (`dcm`) is the primary user-facing command-line interface for interacting with the DCM (Data Center Management) control plane. It provides commands for managing policies, service types, catalog items, catalog item instances, and service provider resources through the control-plane monolith API.
 
 ### 1.2 Version Scope
 
-This specification covers the `v1alpha1` API surface, matching the API Gateway route prefix `/api/v1alpha1`.
+This specification covers the `v1alpha1` API surface, matching the control-plane route prefix `/api/v1alpha1`.
 
 ### 1.3 Reference Documents
 
 | Document | Description |
 |----------|-------------|
-| Policy Manager OpenAPI | `api/v1alpha1/openapi.yaml` in dcm-policy-manager |
-| Catalog Manager OpenAPI | `api/v1alpha1/openapi.yaml` in dcm-catalog-manager |
+| Control-plane OpenAPI | `api/*/v1alpha1/openapi.yaml` in dcm-project/control-plane |
 | AEP Standards | [aep.dev](https://aep.dev/) - API Enhancement Proposals |
 | RFC 7807 | Problem Details for HTTP APIs |
 | RFC 7396 | JSON Merge Patch |
@@ -27,28 +26,23 @@ This specification covers the `v1alpha1` API surface, matching the API Gateway r
 ### 2.1 System Context
 
 ```
-┌─────────┐              ┌──────────────────┐       ┌──────────────────┐
-│         │              │                  │       ┌──────────────────┐
-│  dcm    │─────────────▶│                  │──────▶│ Policy Manager   │
-│  CLI    │ HTTP / HTTPS │  API Gateway     │       │ (port 8080)      │
-│         │              │  (KrakenD 9080)  │       └──────────────────┘
-└─────────┘              │                  │       ┌──────────────────┐
-                         │                  │──────▶│ Catalog Manager  │
-                         │                  │       │ (port 8080)      │
-                         │                  │       └──────────────────┘
-                         │                  │       ┌──────────────────┐
-                         │                  │──────▶│ SP Resource Mgr  │
-                         └──────────────────┘       │ (port 8080)      │
-                                                    └──────────────────┘
+┌─────────┐               ┌────────────────────────────────────────────────────┐
+│         │               │           control-plane monolith                   │
+│  dcm    │─────────────▶│        (port 8080, /api/v1alpha1/*)                │
+│  CLI    │ HTTP / HTTPS  │                                                    │
+│         │               │  Policy Manager · Catalog Manager · SP Manager     │
+│         │               │                                                    │
+└─────────┘               └────────────────────────────────────────────────────┘
 ```
 
-The CLI communicates exclusively through the API Gateway (KrakenD on port 9080). When the API Gateway URL uses an `https://` scheme, the CLI establishes a TLS connection. When the URL uses `http://`, TLS is skipped entirely. The gateway routes requests to the appropriate backend service based on URL path:
+The CLI communicates exclusively through the control plane (port 8080). When the control plane URL uses an `https://` scheme, the CLI establishes a TLS connection. When the URL uses `http://`, TLS is skipped entirely. These managers run in-process in the monolith (formerly separate services). CLI commands call paths under `/api/v1alpha1`:
 
 - `/api/v1alpha1/policies/*` → Policy Manager
 - `/api/v1alpha1/service-types/*` → Catalog Manager
 - `/api/v1alpha1/catalog-items/*` → Catalog Manager
 - `/api/v1alpha1/catalog-item-instances/*` → Catalog Manager
 - `/api/v1alpha1/service-type-instances/*` → SP Resource Manager
+- `/api/v1alpha1/providers/*` → SP Manager
 
 ### 2.2 Internal Architecture
 
@@ -81,7 +75,7 @@ internal/
 | `internal/commands` | Cobra command definitions, flag binding, client invocation |
 | `internal/version` | Build-time version info injected via ldflags |
 
-The CLI uses **generated clients** from `policy-manager/pkg/client`, `catalog-manager/pkg/client`, and `service-provider-manager/pkg/client/resource_manager` (oapi-codegen generated) as Go module dependencies. No hand-written HTTP client is needed.
+The CLI uses **generated clients** from the [control-plane](https://github.com/dcm-project/control-plane/tree/main/pkg) repo ([policy/client](https://github.com/dcm-project/control-plane/tree/main/pkg/policy/client), [catalog/client](https://github.com/dcm-project/control-plane/tree/main/pkg/catalog/client), [sp/client](https://github.com/dcm-project/control-plane/tree/main/pkg/sp/client)) (oapi-codegen generated) as Go module dependencies. No hand-written HTTP client is needed.
 
 ---
 
@@ -92,7 +86,7 @@ The CLI uses **generated clients** from `policy-manager/pkg/client`, `catalog-ma
 Default location: `~/.dcm/config.yaml`
 
 ```yaml
-api-gateway-url: http://localhost:9080
+control-plane-url: http://localhost:8080
 output-format: table
 timeout: 30
 tls-ca-cert: ""
@@ -105,7 +99,7 @@ tls-skip-verify: false
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DCM_API_GATEWAY_URL` | API Gateway base URL | `http://localhost:9080` |
+| `DCM_CONTROL_PLANE_URL` | Control plane API base URL | `http://localhost:8080` |
 | `DCM_OUTPUT_FORMAT` | Output format (`table`, `json`, `yaml`) | `table` |
 | `DCM_TIMEOUT` | Request timeout in seconds | `30` |
 | `DCM_CONFIG` | Path to config file | `~/.dcm/config.yaml` |
@@ -118,8 +112,8 @@ tls-skip-verify: false
 
 Configuration values are resolved in the following order (highest to lowest priority):
 
-1. **Command-line flags** (`--api-gateway-url`, `--output`, `--timeout`)
-2. **Environment variables** (`DCM_API_GATEWAY_URL`, etc.)
+1. **Command-line flags** (`--control-plane-url`, `--output`, `--timeout`)
+2. **Environment variables** (`DCM_CONTROL_PLANE_URL`, etc.)
 3. **Configuration file** (`~/.dcm/config.yaml`)
 4. **Built-in defaults**
 
@@ -129,7 +123,7 @@ These flags are available on all commands:
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--api-gateway-url` | | API Gateway URL |
+| `--control-plane-url` | | Control plane API URL |
 | `--output` | `-o` | Output format: `table`, `json`, `yaml` |
 | `--timeout` | | Request timeout in seconds |
 | `--config` | | Path to config file |
@@ -588,7 +582,7 @@ Manages CLI configuration with file persistence and environment/flag overrides.
 package config
 
 type Config struct {
-    APIGatewayURL string `yaml:"api-gateway-url" mapstructure:"api-gateway-url"`
+    ControlPlaneURL string `yaml:"control-plane-url" mapstructure:"control-plane-url"`
     OutputFormat  string `yaml:"output-format" mapstructure:"output-format"`
     Timeout       int    `yaml:"timeout" mapstructure:"timeout"`
     TLSCACert     string `yaml:"tls-ca-cert" mapstructure:"tls-ca-cert"`
@@ -702,25 +696,26 @@ func Get() Info
 
 ### 5.5 Generated Clients (External Dependencies)
 
-The CLI imports generated client packages as Go module dependencies:
+The CLI imports generated client packages from the control-plane monorepo:
 
-- `github.com/dcm-project/policy-manager/pkg/client` - Policy Manager client
-- `github.com/dcm-project/catalog-manager/pkg/client` - Catalog Manager client
-- `github.com/dcm-project/service-provider-manager/pkg/client/resource_manager` - SP Resource Manager client
+- [pkg/policy/client](https://github.com/dcm-project/control-plane/tree/main/pkg/policy/client) — Policy Manager client
+- [pkg/catalog/client](https://github.com/dcm-project/control-plane/tree/main/pkg/catalog/client) — Catalog Manager client
+- [pkg/sp/client/resource_manager](https://github.com/dcm-project/control-plane/tree/main/pkg/sp/client/resource_manager) — SP Resource Manager client
+- [pkg/sp/client/provider](https://github.com/dcm-project/control-plane/tree/main/pkg/sp/client/provider) — SP Manager client
 
 These are oapi-codegen generated clients providing typed API access. Key interfaces:
 
 ```go
-// Policy Manager client (from policy-manager/pkg/client)
+// Policy client (from control-plane/pkg/policy/client)
 type ClientInterface interface {
     CreatePolicy(ctx context.Context, params *CreatePolicyParams, body CreatePolicyJSONRequestBody, ...) (*http.Response, error)
     ListPolicies(ctx context.Context, params *ListPoliciesParams, ...) (*http.Response, error)
     GetPolicy(ctx context.Context, policyId string, ...) (*http.Response, error)
-    UpdatePolicy(ctx context.Context, policyId string, body UpdatePolicyJSONRequestBody, ...) (*http.Response, error)
+    UpdatePolicyWithApplicationMergePatchPlusJSONBody(ctx context.Context, policyId string, body UpdatePolicyApplicationMergePatchPlusJSONRequestBody, ...) (*http.Response, error)
     DeletePolicy(ctx context.Context, policyId string, ...) (*http.Response, error)
 }
 
-// Catalog Manager client (from catalog-manager/pkg/client)
+// Catalog client (from control-plane/pkg/catalog/client)
 type ClientInterface interface {
     CreateServiceType(ctx context.Context, params *CreateServiceTypeParams, body CreateServiceTypeJSONRequestBody, ...) (*http.Response, error)
     ListServiceTypes(ctx context.Context, params *ListServiceTypesParams, ...) (*http.Response, error)
@@ -729,15 +724,15 @@ type ClientInterface interface {
 }
 ```
 
-Both clients are instantiated with the API Gateway URL and a configured HTTP client. When the API Gateway URL uses `https://`, the HTTP client is configured with a TLS transport based on the TLS settings (CA cert, client cert/key, skip verify). When the URL uses `http://`, TLS is not configured.
+Clients are instantiated with the control-plane URL and a configured HTTP client. When the control-plane URL uses `https://`, the HTTP client is configured with a TLS transport based on the TLS settings (CA cert, client cert/key, skip verify). When the URL uses `http://`, TLS is not configured.
 
 ```go
 httpClient := buildHTTPClient(cfg) // configures TLS transport when URL is https
-policyClient, _ := policyclient.NewClient(cfg.APIGatewayURL + "/api/v1alpha1",
+policyClient, _ := policyclient.NewClient(cfg.ControlPlaneURL + "/api/v1alpha1",
     policyclient.WithHTTPClient(httpClient))
-catalogClient, _ := catalogclient.NewClient(cfg.APIGatewayURL + "/api/v1alpha1",
+catalogClient, _ := catalogclient.NewClient(cfg.ControlPlaneURL + "/api/v1alpha1",
     catalogclient.WithHTTPClient(httpClient))
-sprmClient, _ := sprmclient.NewClient(cfg.APIGatewayURL + "/api/v1alpha1",
+sprmClient, _ := sprmclient.NewClient(cfg.ControlPlaneURL + "/api/v1alpha1",
     sprmclient.WithHTTPClient(httpClient))
 ```
 
@@ -820,7 +815,7 @@ User invokes command
   │
   ├─▶ Build HTTP client (configure TLS transport if URL is https://)
   │
-  ├─▶ Create generated client with API Gateway URL and HTTP client
+  ├─▶ Create generated client with control-plane URL and HTTP client
   │
   ├─▶ Execute API call via generated client
   │
@@ -913,7 +908,7 @@ For JSON/YAML output, `next_page_token` is included in the response object.
 
 ### 8.1 Protocol-Based TLS Behavior
 
-TLS is determined automatically by the API Gateway URL scheme:
+TLS is determined automatically by the control-plane URL scheme:
 
 - **`http://`** — TLS is not used. All TLS-related flags and config are ignored.
 - **`https://`** — TLS is enabled. The CLI constructs a `tls.Config` and uses it for the HTTP transport.
@@ -930,7 +925,7 @@ TLS is determined automatically by the API Gateway URL scheme:
 ### 8.3 Validation Rules
 
 - If `--tls-client-cert` is set, `--tls-client-key` MUST also be set (and vice versa). The CLI MUST exit with code 2 if only one is provided.
-- TLS flags are silently ignored when the API Gateway URL uses `http://`.
+- TLS flags are silently ignored when the control-plane URL uses `http://`.
 - If the CA cert, client cert, or client key file does not exist or is not readable, the CLI MUST exit with code 1 with a clear error message.
 
 ### 8.4 Configuration Precedence
@@ -951,7 +946,7 @@ TLS options follow the same precedence as other configuration:
 | Category | Description | Exit Code |
 |----------|-------------|-----------|
 | Configuration error | Invalid config file, missing required config | 1 |
-| Connection error | Cannot reach API Gateway | 1 |
+| Connection error | Cannot reach control plane | 1 |
 | API error | Backend returned an error response | 1 |
 | Input error | Invalid flags, missing arguments, bad file | 2 |
 | Timeout | Request exceeded timeout | 1 |
@@ -1070,9 +1065,7 @@ go 1.25.5
 | `github.com/spf13/cobra` | CLI framework |
 | `github.com/spf13/viper` | Configuration management |
 | `gopkg.in/yaml.v3` | YAML parsing/output |
-| `github.com/dcm-project/policy-manager/pkg/client` | Generated Policy Manager client |
-| `github.com/dcm-project/catalog-manager/pkg/client` | Generated Catalog Manager client |
-| `github.com/dcm-project/service-provider-manager/pkg/client/resource_manager` | Generated SP Resource Manager client |
+| `github.com/dcm-project/control-plane` | Generated API clients (policy, catalog, SP) |
 | `github.com/onsi/ginkgo/v2` | Test framework (test dependency) |
 | `github.com/onsi/gomega` | Test matchers (test dependency) |
 
@@ -1142,14 +1135,14 @@ go test -run TestName ./internal/commands  # Specific test
 
 - **Location**: `test/e2e/`
 - **Build tag**: `//go:build e2e` (excluded from `make test`)
-- **Requirements**: Live DCM stack (API Gateway + backends)
+- **Requirements**: Live DCM stack (control-plane on :8080)
 - **Framework**: Ginkgo + Gomega
 - **Scope**: Full command execution against real services
 
 Running E2E tests:
 
 ```bash
-make test-e2e   # Requires DCM_API_GATEWAY_URL pointing to live stack
+make test-e2e   # Requires DCM_CONTROL_PLANE_URL pointing to live stack
 ```
 
 ---
@@ -1173,11 +1166,11 @@ make test-e2e   # Requires DCM_API_GATEWAY_URL pointing to live stack
 
 ### 12.2 Out of Scope (v1alpha1)
 
-- Authentication and authorization (no auth in v1alpha1 API Gateway)
+- Authentication and authorization (no auth in v1alpha1 control-plane API)
 - Interactive/wizard-style resource creation
 - Watch/streaming operations
 - Plugin/extension system
 - Offline mode or local caching
 - Bulk operations
 - Resource diff/dry-run
-- Health check command for API Gateway connectivity
+- Health check command for control-plane connectivity
