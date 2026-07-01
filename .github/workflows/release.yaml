@@ -74,6 +74,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh release delete "${GITHUB_SHA:0:7}" --yes --cleanup-tag 2>/dev/null || true
           cat <<NOTES > /tmp/release-notes.md
           Snapshot build from \`${GITHUB_REF_NAME}\` at ${GITHUB_SHA:0:7}.
           NOTES
