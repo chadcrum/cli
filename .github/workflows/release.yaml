@@ -15,13 +15,19 @@ concurrency:
 
 jobs:
   ci:
+    if: startsWith(github.ref, 'refs/tags/')
     uses: ./.github/workflows/ci.yaml
 
   lint:
+    if: startsWith(github.ref, 'refs/tags/')
     uses: ./.github/workflows/lint.yaml
 
   release:
     needs: [ci, lint]
+    if: >-
+      always() &&
+      (needs.ci.result == 'success' || needs.ci.result == 'skipped') &&
+      (needs.lint.result == 'success' || needs.lint.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
