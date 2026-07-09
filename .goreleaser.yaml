@@ -1,5 +1,8 @@
 version: 2
 
+snapshot:
+  version_template: "{{ incpatch .Version }}-next+{{ .ShortCommit }}"
+
 builds:
   - main: ./cmd/dcm
     binary: dcm

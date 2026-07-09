@@ -787,8 +787,7 @@ dcm-cli/
 │       ├── ci.yaml
 │       ├── lint.yaml
 │       ├── check-clean-commits.yaml
-│       ├── release.yaml
-│       └── tag-release.yaml
+│       └── release.yaml
 ├── .goreleaser.yaml
 ├── CLAUDE.md
 ├── Containerfile
@@ -1016,12 +1015,17 @@ build:
 
 ### 10.3 Release
 
-Releases are automated via GoReleaser and GitHub Actions. When a `v*` tag is pushed, the `tag-release` workflow runs CI tests and linting, then triggers the `release` workflow which uses GoReleaser to:
+Releases are automated via GoReleaser and GitHub Actions through a single `release.yaml` workflow.
 
-- Build `dcm` binaries for linux, darwin, and windows (amd64 and arm64)
-- Inject version, commit, and build time via ldflags
-- Create a GitHub release with archives and checksums
-- Include the LICENSE in each archive
+**Rolling pre-releases (push to main):**
+
+Every push to main builds snapshot binaries and publishes two pre-releases:
+- `main` — a rolling release replaced on every push (like the `:main` container image tag)
+- `<sha7>` — an immutable release for pinning to a specific commit
+
+**Formal releases (tag push):**
+
+When a `v*` tag is pushed, the workflow runs CI and lint checks, then GoReleaser builds release binaries and creates a GitHub release with archives and checksums.
 
 To create a release:
 
