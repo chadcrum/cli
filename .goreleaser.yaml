@@ -1,7 +1,7 @@
 version: 2
 
 snapshot:
-  version_template: "{{ incpatch .Version }}-next+{{ .ShortCommit }}"
+  version_template: "{{ .ShortCommit }}"
 
 builds:
   - main: ./cmd/dcm
