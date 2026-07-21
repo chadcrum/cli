@@ -21,7 +21,11 @@ var catalogItemTableDef = &output.TableDef{
 		}
 		var serviceType string
 		if spec, ok := m["spec"].(map[string]any); ok {
-			serviceType = stringifyValue(spec, "service_type")
+			if resources, ok := spec["resources"].([]any); ok && len(resources) > 0 {
+				if res, ok := resources[0].(map[string]any); ok {
+					serviceType = stringifyValue(res, "service_type")
+				}
+			}
 		}
 		return []string{
 			stringifyValue(m, "uid"),

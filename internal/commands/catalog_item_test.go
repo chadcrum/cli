@@ -21,7 +21,12 @@ func sampleCatalogItemResponse() map[string]any {
 		"display_name": "Small Container",
 		"create_time":  "2026-03-09T10:00:00Z",
 		"spec": map[string]any{
-			"service_type": "container",
+			"resources": []any{
+				map[string]any{
+					"name":         "main",
+					"service_type": "container",
+				},
+			},
 		},
 	}
 }
@@ -85,7 +90,7 @@ var _ = Describe("Catalog Item Commands", func() {
 				writeJSONResponse(w, http.StatusCreated, sampleCatalogItemResponse())
 			}))
 
-			yamlFile := writeTempFile("display_name: Small Container\nspec:\n  service_type: container\n", ".yaml")
+			yamlFile := writeTempFile("display_name: Small Container\nspec:\n  resources:\n    - name: main\n      service_type: container\n", ".yaml")
 
 			err := executeCommand("catalog", "item", "create", "--from-file", yamlFile)
 			Expect(err).NotTo(HaveOccurred())
