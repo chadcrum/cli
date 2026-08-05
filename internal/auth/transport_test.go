@@ -21,7 +21,7 @@ type failSaveStore struct {
 	err error
 }
 
-func (s *failSaveStore) Save(issuerURL string, data *auth.TokenData) error {
+func (s *failSaveStore) Save(_ string, _ *auth.TokenData) error {
 	return s.err
 }
 
@@ -268,8 +268,8 @@ var _ = Describe("AuthTransport", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			transport := &auth.AuthTransport{
-				Base:  http.DefaultTransport,
-				Store: &failSaveStore{TokenStore: store, err: errors.New("disk full")},
+				Base:      http.DefaultTransport,
+				Store:     &failSaveStore{TokenStore: store, err: errors.New("disk full")},
 				IssuerURL: "http://keycloak:8080/realms/dcm",
 				Stderr:    tmpFile,
 			}
