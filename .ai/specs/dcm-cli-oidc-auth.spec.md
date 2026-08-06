@@ -489,12 +489,21 @@ refresh timers.
 - **Then** the request MUST proceed without an Authorization header
 - **Aligns with QE:** TC-04 (post-logout)
 
-##### AC-TRN-090: Concurrent CLI processes with stored token
+##### AC-TRN-090: Concurrent refresh serialized in-process
 
-- **Validates:** REQ-TRN-050, REQ-TRN-090
+- **Validates:** REQ-TRN-090
+- **Given** two concurrent requests in the same process that both need a refresh
+- **When** AuthTransport refreshes the access token
+- **Then** refresh MUST be serialized with a mutex
+- **And** the second waiter MUST re-load the store after acquiring the lock and MUST NOT perform a redundant refresh when the first already succeeded
+
+##### AC-TRN-100: Concurrent CLI processes with stored token
+
+- **Validates:** REQ-TRN-050
 - **Given** valid stored credentials
 - **When** multiple CLI invocations use the stored token
-- **Then** each MUST be able to authenticate (single-process refresh is mutex-protected; multi-process races are a known limitation)
+- **Then** each MUST be able to authenticate with a non-expired access token
+- **And** multi-process refresh races are a known limitation (no cross-process lock)
 - **Aligns with QE:** TC-17
 
 #### Dependencies
