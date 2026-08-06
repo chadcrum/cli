@@ -238,7 +238,7 @@ URL (browser open is best-effort; the printed URL is the reliable path).
 | REQ-LGN-100 | The login command context MUST time out after 5 minutes | MUST | |
 | REQ-LGN-110 | On success, `dcm login` MUST persist access token, refresh token, optional ID token, expiry, and token endpoint via the TokenStore for the issuer URL | MUST | |
 | REQ-LGN-120 | On success, `dcm login` MUST save `issuer-url` (and `control-plane-url` when set) to the config file; config save failure MUST warn on stderr and MUST NOT fail the login | MUST | |
-| REQ-LGN-130 | On success, `dcm login` MUST print a success message to stderr including token TTL; when `preferred_username` is present in the access token it MUST be included | MUST | |
+| REQ-LGN-130 | On success, `dcm login` MUST print a success message to stderr including access-token TTL and that auto-refresh is enabled; when `preferred_username` is present in the access token it MUST be included | MUST | |
 
 #### Acceptance Criteria
 
@@ -281,7 +281,7 @@ URL (browser open is best-effort; the printed URL is the reliable path).
 - **Validates:** REQ-LGN-130
 - **Given** a successful login whose access token includes `preferred_username`
 - **When** login completes
-- **Then** stderr MUST report the username and remaining token TTL
+- **Then** stderr MUST report the username, remaining access-token TTL, and that auto-refresh is enabled
 - **Aligns with QE:** TC-01
 
 ##### AC-LGN-060: Browser open is best-effort
