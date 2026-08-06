@@ -375,7 +375,7 @@ cross-machine credential sync.
 
 - **Validates:** REQ-TOK-100
 - **Given** a TokenData instance with real token values
-- **When** String or MarshalLog is invoked
+- **When** string or log output is produced for that TokenData
 - **Then** the result MUST be a redacted placeholder and MUST NOT contain the token values
 - **Aligns with QE:** TC-16
 
@@ -582,7 +582,7 @@ Depends on Topic 1 (Auth Configuration) and Topic 3 (Token Storage).
 
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
-| REQ-XC-SEC-010 | Token values MUST NOT appear in TokenData String/log helpers | MUST | See REQ-TOK-100 |
+| REQ-XC-SEC-010 | Token values MUST NOT appear in TokenData string/log output | MUST | See REQ-TOK-100 |
 | REQ-XC-SEC-020 | The static token MUST NOT be persisted to the YAML config file | MUST | See REQ-ACFG-060 |
 | REQ-XC-SEC-030 | File-based token storage MUST use restrictive permissions (`0700` dir, `0600` file) | MUST | See REQ-TOK-050 |
 
@@ -592,7 +592,7 @@ Depends on Topic 1 (Auth Configuration) and Topic 3 (Token Storage).
 
 - **Validates:** REQ-XC-SEC-010, REQ-XC-SEC-020, REQ-XC-SEC-030
 - **Given** tokens exist in memory, config save paths, and file storage
-- **When** String/MarshalLog, config file contents, and file modes are inspected
+- **When** string/log output, config file contents, and file modes are inspected
 - **Then** secrets MUST be redacted or absent from config, and file perms MUST be restrictive
 - **Aligns with QE:** TC-13, TC-16
 
