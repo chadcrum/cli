@@ -323,7 +323,7 @@ cross-machine credential sync.
 | REQ-TOK-080 | Load of a missing issuer MUST return a nil TokenData without error | MUST | |
 | REQ-TOK-090 | Delete of a missing issuer MUST succeed without error | MUST | |
 | REQ-TOK-100 | TokenData string/log representations MUST redact secrets (MUST NOT emit raw token values) | MUST | |
-| REQ-TOK-110 | Access-token expiry checks MUST use an unverified JWT `exp` claim decode with a configurable clock-skew buffer | MUST | Transport uses 30s |
+| REQ-TOK-110 | Access-token expiry checks MUST use an unverified JWT `exp` claim decode with a clock-skew buffer (30s; see REQ-TRN-120) | MUST | |
 
 #### Acceptance Criteria
 
