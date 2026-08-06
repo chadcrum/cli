@@ -587,19 +587,19 @@ Depends on Topic 1 (Auth Configuration) and Topic 3 (Token Storage).
 
 ### 5.1 Secret Handling
 
-#### Requirements
+Normative requirements live in the topic sections. This cross-cut is an index only:
 
-| ID | Requirement | Priority | Notes |
-|----|-------------|----------|-------|
-| REQ-XC-SEC-010 | Token values MUST NOT appear in TokenData string/log output | MUST | See REQ-TOK-100 |
-| REQ-XC-SEC-020 | The static token MUST NOT be persisted to the YAML config file | MUST | See REQ-ACFG-060 |
-| REQ-XC-SEC-030 | File-based token storage MUST use restrictive permissions (`0700` dir, `0600` file) | MUST | See REQ-TOK-050 |
+| Concern | Source requirement |
+|---------|--------------------|
+| Token redaction in string/log output | REQ-TOK-100 |
+| Static token never persisted to config | REQ-ACFG-060 |
+| Restrictive file-store permissions | REQ-TOK-050 |
 
 #### Acceptance Criteria
 
-##### AC-XC-SEC-010: No secret leakage via helpers
+##### AC-XC-SEC-010: No secret leakage
 
-- **Validates:** REQ-XC-SEC-010, REQ-XC-SEC-020, REQ-XC-SEC-030
+- **Validates:** REQ-TOK-100, REQ-ACFG-060, REQ-TOK-050
 - **Given** tokens exist in memory, config save paths, and file storage
 - **When** string/log output, config file contents, and file modes are inspected
 - **Then** secrets MUST be redacted or absent from config, and file perms MUST be restrictive
@@ -685,6 +685,5 @@ See [Design Decisions](../decisions/dcm-cli-oidc-auth.decisions.md).
 | REQ-TOK-NNN | 4.3: Token Storage | 11 |
 | REQ-TRN-NNN | 4.4: Authenticated Transport | 12 |
 | REQ-LGO-NNN | 4.5: Logout & Revocation | 8 |
-| REQ-XC-SEC-NNN | 5.1: Secret Handling | 3 |
 | REQ-XC-ERR-NNN | 5.2: Error Messaging | 3 |
-| **Total** | | **59** |
+| **Total** | | **56** |
