@@ -637,7 +637,7 @@ Related non-auth settings used by auth flows (defined in the base CLI spec):
 
 | Config Key | Env Var | Flag | Role in auth |
 |------------|---------|------|--------------|
-| control-plane-url | DCM_CONTROL_PLANE_URL | --control-plane-url | Saved on login; target for Bearer API calls |
+| control-plane-url | DCM_CONTROL_PLANE_URL | --control-plane-url | Saved on login when set; target for Bearer API calls |
 | tls-* | DCM_TLS_* | --tls-* | Applied to HTTP client used for OIDC and API calls |
 
 Constants (not configurable):
