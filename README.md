@@ -1377,7 +1377,7 @@ Tokens are stored using a two-tier strategy:
 1. **OS keychain** (primary) - macOS Keychain, Linux Secret Service (GNOME Keyring/KDE Wallet), Windows Credential Manager. Service name: `dcm-cli`, key: normalized issuer URL.
 2. **File** (fallback) - `~/.dcm/tokens.json` with `0600` permissions. Activated automatically when the keychain is unavailable (containers, CI, headless SSH).
 
-Both backends use atomic writes (write to `.tmp` then rename) for crash safety.
+The file backend uses atomic writes (write to `.tmp` then rename) for crash safety. The keyring backend delegates to the OS keychain API (`keyring.Set`).
 
 ### 13.5 Token Lifecycle
 
