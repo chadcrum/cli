@@ -766,49 +766,7 @@ func newCompletionCommand() *cobra.Command              // dcm completion [bash|
 
 ### 5.4 `internal/auth`
 
-OIDC authentication with device authorization flow, token storage, and authenticated HTTP transport.
-
-```go
-package auth
-
-const ClientID = "dcm-cli"
-
-// DeviceLogin performs the OAuth 2.0 Device Authorization Grant.
-func DeviceLogin(ctx context.Context, issuerURL string, httpClient *http.Client, w io.Writer) (*TokenData, error)
-
-// RevokeToken revokes the refresh token at the OIDC provider's revocation endpoint.
-func RevokeToken(ctx context.Context, issuerURL string, refreshToken string, httpClient *http.Client) error
-
-// PreferredUsername extracts preferred_username from the JWT payload (no verification).
-func PreferredUsername(accessToken string) string
-
-// TokenData holds the tokens obtained from the OIDC provider.
-type TokenData struct {
-    AccessToken   string
-    RefreshToken  string
-    IDToken       string
-    Expiry        time.Time
-    TokenEndpoint string
-}
-
-// TokenStore persists tokens keyed by issuer URL.
-type TokenStore interface {
-    Save(issuerURL string, data *TokenData) error
-    Load(issuerURL string) (*TokenData, error)
-    Delete(issuerURL string) error
-}
-
-// NewTokenStore returns a keyring-backed store, falling back to file if unavailable.
-func NewTokenStore() TokenStore
-
-// AuthTransport is an http.RoundTripper that injects Bearer tokens.
-type AuthTransport struct { ... }
-```
-
-Token lifecycle:
-1. **No network**: unverified JWT `exp` decode checks if the access token is still valid
-2. **Refresh**: if expired, use the stored refresh token to obtain a new access token
-3. **Fail**: if refresh fails, return an actionable error directing the user to `dcm login`
+OIDC device authorization, token storage (keyring with file fallback), and `AuthTransport` for Bearer injection/refresh. Public entry points: `DeviceLogin`, `RevokeToken`, `NewTokenStore`, `AuthTransport`. Behavior and usage are covered in [§13 Authentication](#13-authentication).
 
 ### 5.5 `internal/version`
 
