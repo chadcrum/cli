@@ -270,6 +270,34 @@ var _ = Describe("FileStore", func() {
 	})
 })
 
+var _ = Describe("newFileStore", func() {
+	AfterEach(func() {
+		auth.ResetUserHomeDir()
+	})
+
+	It("returns an error when the home directory cannot be resolved", func() {
+		restore := auth.SetUserHomeDir(func() (string, error) {
+			return "", fmt.Errorf("no home")
+		})
+		defer restore()
+
+		_, err := auth.NewFileStore()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("resolving home directory for token store"))
+	})
+
+	It("returns an error when the home directory is empty", func() {
+		restore := auth.SetUserHomeDir(func() (string, error) {
+			return "", nil
+		})
+		defer restore()
+
+		_, err := auth.NewFileStore()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("empty home"))
+	})
+})
+
 var _ = Describe("SaveConfig integration", func() {
 	It("creates config file when it does not exist", func() {
 		dir := GinkgoT().TempDir()

@@ -78,7 +78,10 @@ func buildHTTPClient(cfg *config.Config) (*http.Client, error) {
 	if cfg.IssuerURL != "" || cfg.Token != "" {
 		var store auth.TokenStore
 		if cfg.Token == "" {
-			store = auth.NewTokenStore()
+			store, err = auth.NewTokenStore()
+			if err != nil {
+				return nil, fmt.Errorf("initializing credential store: %w", err)
+			}
 		}
 		transport := &auth.AuthTransport{
 			Base:        baseTransport,

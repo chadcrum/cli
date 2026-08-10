@@ -52,7 +52,8 @@ var _ = Describe("logout command", func() {
 		server := mockOIDCServer(mockOIDCOptions{})
 		defer server.Close()
 
-		store := auth.NewTokenStore()
+		store, err := auth.NewTokenStore()
+		Expect(err).NotTo(HaveOccurred())
 		td := &auth.TokenData{
 			AccessToken:   makeTestJWT(time.Now().Add(5*time.Minute), "dcm-admin"),
 			RefreshToken:  "test-refresh-token",
@@ -72,7 +73,7 @@ var _ = Describe("logout command", func() {
 			"logout",
 		})
 
-		err := cmd.Execute()
+		err = cmd.Execute()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(errBuf.String()).To(ContainSubstring("Logged out successfully"))
 
@@ -85,7 +86,8 @@ var _ = Describe("logout command", func() {
 		server := mockOIDCServer(mockOIDCOptions{revokeStatus: 500})
 		defer server.Close()
 
-		store := auth.NewTokenStore()
+		store, err := auth.NewTokenStore()
+		Expect(err).NotTo(HaveOccurred())
 		td := &auth.TokenData{
 			AccessToken:   makeTestJWT(time.Now().Add(5*time.Minute), "dcm-admin"),
 			RefreshToken:  "test-refresh-token",
@@ -105,7 +107,7 @@ var _ = Describe("logout command", func() {
 			"logout",
 		})
 
-		err := cmd.Execute()
+		err = cmd.Execute()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(errBuf.String()).To(ContainSubstring("Warning: token revocation failed"))
 		Expect(errBuf.String()).To(ContainSubstring("Logged out successfully"))

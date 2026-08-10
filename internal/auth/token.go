@@ -76,13 +76,14 @@ type TokenStore interface {
 }
 
 // NewTokenStore returns a TokenStore backed by the OS keyring if available,
-// falling back to a file-based store otherwise.
-func NewTokenStore() TokenStore {
+// falling back to a file-based store otherwise. It returns an error if the
+// file fallback is required and the home directory cannot be resolved.
+func NewTokenStore() (TokenStore, error) {
 	if err := keyring.Set(keyringService, "__probe__", "probe"); err != nil {
 		return newFileStore()
 	}
 	_ = keyring.Delete(keyringService, "__probe__")
-	return &keyringStore{}
+	return &keyringStore{}, nil
 }
 
 // normalizeIssuer strips trailing slashes from the issuer URL for use as
@@ -130,9 +131,18 @@ type fileStore struct {
 	dir string
 }
 
-func newFileStore() *fileStore {
-	home, _ := os.UserHomeDir()
-	return &fileStore{dir: filepath.Join(home, ".dcm")}
+// userHomeDir is os.UserHomeDir by default; tests may override it.
+var userHomeDir = os.UserHomeDir
+
+func newFileStore() (*fileStore, error) {
+	home, err := userHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("resolving home directory for token store: %w", err)
+	}
+	if home == "" {
+		return nil, fmt.Errorf("resolving home directory for token store: empty home")
+	}
+	return &fileStore{dir: filepath.Join(home, ".dcm")}, nil
 }
 
 func (s *fileStore) path() string {

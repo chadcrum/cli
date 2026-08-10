@@ -19,7 +19,10 @@ func newLogoutCommand() *cobra.Command {
 				return &UsageError{Err: fmt.Errorf("--issuer-url is required (or set DCM_ISSUER_URL)")}
 			}
 
-			store := auth.NewTokenStore()
+			store, err := auth.NewTokenStore()
+			if err != nil {
+				return fmt.Errorf("initializing credential store: %w", err)
+			}
 			tokenData, err := store.Load(cfg.IssuerURL)
 			if err != nil {
 				return fmt.Errorf("reading stored credentials: %w", err)

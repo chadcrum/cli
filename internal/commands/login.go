@@ -36,7 +36,10 @@ func newLoginCommand() *cobra.Command {
 				return err
 			}
 
-			store := auth.NewTokenStore()
+			store, err := auth.NewTokenStore()
+			if err != nil {
+				return fmt.Errorf("initializing credential store: %w", err)
+			}
 			if err := store.Save(cfg.IssuerURL, tokenData); err != nil {
 				return fmt.Errorf("saving credentials: %w", err)
 			}

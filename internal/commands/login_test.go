@@ -64,7 +64,8 @@ var _ = Describe("login command", func() {
 		Expect(errBuf.String()).To(ContainSubstring("Logged in as dcm-admin"))
 		Expect(errBuf.String()).To(ContainSubstring("auto-refresh enabled"))
 
-		store := auth.NewTokenStore()
+		store, err := auth.NewTokenStore()
+		Expect(err).NotTo(HaveOccurred())
 		td, err := store.Load(server.URL)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(td).NotTo(BeNil())
@@ -88,7 +89,8 @@ var _ = Describe("login command", func() {
 		})
 		defer server.Close()
 
-		store := auth.NewTokenStore()
+		store, err := auth.NewTokenStore()
+		Expect(err).NotTo(HaveOccurred())
 		Expect(store.Save(server.URL, &auth.TokenData{
 			AccessToken:   makeTestJWT(time.Now().Add(-time.Hour), "stale-user"),
 			RefreshToken:  "invalid-refresh",
@@ -107,7 +109,7 @@ var _ = Describe("login command", func() {
 			"login",
 		})
 
-		err := cmd.Execute()
+		err = cmd.Execute()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(errBuf.String()).To(ContainSubstring("Logged in as dcm-admin"))
 		Expect(errBuf.String()).To(ContainSubstring("auto-refresh enabled"))
