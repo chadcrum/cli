@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/dcm-project/cli/internal/auth"
@@ -47,7 +48,7 @@ func newLoginCommand() *cobra.Command {
 			configValues := map[string]string{
 				"issuer-url": cfg.IssuerURL,
 			}
-			if cfg.ControlPlaneURL != "" {
+			if controlPlaneURLExplicitlySet(cmd) {
 				configValues["control-plane-url"] = cfg.ControlPlaneURL
 			}
 			if err := config.SaveConfig(config.ConfigPath(cmd), configValues); err != nil {
@@ -65,4 +66,14 @@ func newLoginCommand() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// controlPlaneURLExplicitlySet reports whether the user provided a control-plane
+// URL via --control-plane-url or DCM_CONTROL_PLANE_URL. The built-in default
+// alone does not count as "set" for login config persistence (REQ-LGN-120).
+func controlPlaneURLExplicitlySet(cmd *cobra.Command) bool {
+	if f := cmd.Root().PersistentFlags().Lookup("control-plane-url"); f != nil && f.Changed {
+		return true
+	}
+	return os.Getenv("DCM_CONTROL_PLANE_URL") != ""
 }

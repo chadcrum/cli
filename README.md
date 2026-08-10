@@ -197,7 +197,7 @@ dcm
 
 Authenticate with the DCM control plane using the OIDC Device Authorization Grant (RFC 8628). Initiates a device flow, opens a browser for the user to authenticate, and stores the resulting tokens locally.
 
-On success, `dcm login` also saves `issuer-url` and `control-plane-url` to the active config file (`--config` / `DCM_CONFIG`, or `~/.dcm/config.yaml`) so subsequent commands work without flags.
+On success, `dcm login` saves `issuer-url` to the active config file (`--config` / `DCM_CONFIG`, or `~/.dcm/config.yaml`). It also saves `control-plane-url` when that value was explicitly provided via `--control-plane-url` or `DCM_CONTROL_PLANE_URL` (the built-in default alone is not written).
 
 | Flag | Required | Description |
 |------|----------|-------------|
@@ -208,7 +208,7 @@ On success, `dcm login` also saves `issuer-url` and `control-plane-url` to the a
 # Login to a DCM instance
 dcm login --issuer-url https://keycloak.example.com/realms/dcm --control-plane-url https://dcm.example.com
 
-# After first login, issuer-url and control-plane-url are saved to config
+# After first login, issuer-url (and control-plane-url when set) are saved to config
 dcm policy list
 ```
 
@@ -989,7 +989,7 @@ dcm login --issuer-url https://keycloak.example.com/realms/dcm --control-plane-u
   ├─▶ Store tokens (access + refresh + ID + expiry + token endpoint)
   │     ├─ OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager)
   │     └─ File fallback: ~/.dcm/tokens.json (mode 0600)
-  ├─▶ Save issuer-url and control-plane-url to ~/.dcm/config.yaml
+  ├─▶ Save issuer-url (and control-plane-url when explicitly set) to ~/.dcm/config.yaml
   ├─▶ Print "Logged in as <username> (token expires in <ttl>; auto-refresh enabled)"
   └─▶ Exit 0
 
@@ -1356,7 +1356,7 @@ For human users, `dcm login` performs the device authorization flow:
 dcm login --issuer-url https://keycloak.example.com/realms/dcm --control-plane-url https://dcm.example.com
 ```
 
-This discovers the OIDC provider endpoints, initiates a device flow, opens a browser for the user to authenticate, and stores the resulting tokens. On success, `issuer-url` and `control-plane-url` are persisted to `~/.dcm/config.yaml` so subsequent commands work without flags.
+This discovers the OIDC provider endpoints, initiates a device flow, opens a browser for the user to authenticate, and stores the resulting tokens. On success, `issuer-url` is persisted to `~/.dcm/config.yaml`, and `control-plane-url` is persisted when explicitly set via flag or `DCM_CONTROL_PLANE_URL`.
 
 ### 13.3 CI/Scripting (Static Token)
 

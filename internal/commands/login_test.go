@@ -79,6 +79,61 @@ var _ = Describe("login command", func() {
 		Expect(string(cfgData)).NotTo(ContainSubstring("token:"))
 	})
 
+	It("persists issuer-url but not the default control-plane-url", func() {
+		home := GinkgoT().TempDir()
+		GinkgoT().Setenv("HOME", home)
+		configPath := filepath.Join(home, "dcm-config.yaml")
+
+		server := mockOIDCServer(mockOIDCOptions{pollsBeforeSuccess: 0})
+		defer server.Close()
+
+		cmd := commands.NewRootCommand()
+		errBuf := new(bytes.Buffer)
+		cmd.SetOut(new(bytes.Buffer))
+		cmd.SetErr(errBuf)
+		cmd.SetArgs([]string{
+			"--config", configPath,
+			"--issuer-url", server.URL,
+			"login",
+		})
+
+		err := cmd.Execute()
+		Expect(err).NotTo(HaveOccurred())
+
+		cfgData, err := os.ReadFile(configPath)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(cfgData)).To(ContainSubstring("issuer-url: " + server.URL))
+		Expect(string(cfgData)).NotTo(ContainSubstring("control-plane-url"))
+	})
+
+	It("persists control-plane-url from DCM_CONTROL_PLANE_URL", func() {
+		home := GinkgoT().TempDir()
+		GinkgoT().Setenv("HOME", home)
+		GinkgoT().Setenv("DCM_CONTROL_PLANE_URL", "http://env-cp.example:8080")
+		configPath := filepath.Join(home, "dcm-config.yaml")
+
+		server := mockOIDCServer(mockOIDCOptions{pollsBeforeSuccess: 0})
+		defer server.Close()
+
+		cmd := commands.NewRootCommand()
+		errBuf := new(bytes.Buffer)
+		cmd.SetOut(new(bytes.Buffer))
+		cmd.SetErr(errBuf)
+		cmd.SetArgs([]string{
+			"--config", configPath,
+			"--issuer-url", server.URL,
+			"login",
+		})
+
+		err := cmd.Execute()
+		Expect(err).NotTo(HaveOccurred())
+
+		cfgData, err := os.ReadFile(configPath)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(cfgData)).To(ContainSubstring("issuer-url: " + server.URL))
+		Expect(string(cfgData)).To(ContainSubstring("control-plane-url: http://env-cp.example:8080"))
+	})
+
 	It("completes device login when stored credentials are expired and refresh fails", func() {
 		home := GinkgoT().TempDir()
 		GinkgoT().Setenv("HOME", home)
