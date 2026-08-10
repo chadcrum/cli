@@ -83,11 +83,19 @@ func buildHTTPClient(cfg *config.Config) (*http.Client, error) {
 				return nil, fmt.Errorf("initializing credential store: %w", err)
 			}
 		}
+		var refreshTransport http.RoundTripper
+		if cfg.IssuerURL != "" {
+			refreshTransport, err = tlsTransportForURL(cfg, cfg.IssuerURL)
+			if err != nil {
+				return nil, err
+			}
+		}
 		transport := &auth.AuthTransport{
-			Base:        baseTransport,
-			Store:       store,
-			IssuerURL:   cfg.IssuerURL,
-			StaticToken: cfg.Token,
+			Base:             baseTransport,
+			RefreshTransport: refreshTransport,
+			Store:            store,
+			IssuerURL:        cfg.IssuerURL,
+			StaticToken:      cfg.Token,
 		}
 		return &http.Client{Transport: transport}, nil
 	}

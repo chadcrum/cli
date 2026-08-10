@@ -821,7 +821,7 @@ type ClientInterface interface {
 }
 ```
 
-Clients are instantiated with the control-plane URL and a configured HTTP client. When the control-plane URL uses `https://`, the HTTP client is configured with a TLS transport based on the TLS settings (CA cert, client cert/key, skip verify). When the URL uses `http://`, TLS is not configured. When authentication is configured (`issuer-url` or `token`), the base transport is wrapped with `AuthTransport` which lazily injects Bearer tokens. Token refresh reuses that base TLS transport (not `http.DefaultClient`). Login and logout use a plain HTTP client (no AuthTransport) with TLS derived from the issuer URL, so OIDC traffic works when the control plane is HTTP and the issuer is HTTPS with a private CA.
+Clients are instantiated with the control-plane URL and a configured HTTP client. When the control-plane URL uses `https://`, the HTTP client is configured with a TLS transport based on the TLS settings (CA cert, client cert/key, skip verify). When the URL uses `http://`, TLS is not configured. When authentication is configured (`issuer-url` or `token`), the base transport is wrapped with `AuthTransport` which lazily injects Bearer tokens. Token refresh uses a separate transport derived from the issuer URL (falling back to the control-plane base transport), so OIDC refresh works when the control plane is HTTP and the issuer is HTTPS with a private CA. Login and logout use a plain HTTP client (no AuthTransport) with TLS derived from the issuer URL for the same reason.
 
 ```go
 httpClient := buildHTTPClient(cfg) // TLS + optional AuthTransport wrapping

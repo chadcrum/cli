@@ -20,13 +20,17 @@ const clockSkew = 30 * time.Second
 //   - Stored token: loaded from a TokenStore, with automatic refresh when
 //     the access token expires.
 type AuthTransport struct {
-	Base        http.RoundTripper
-	Store       TokenStore
-	IssuerURL   string
-	StaticToken string
-	Stderr      *os.File
-	mu          sync.Mutex
-	warnOnce    sync.Once
+	Base http.RoundTripper
+	// RefreshTransport is used for OIDC token-endpoint calls during refresh.
+	// When nil, Base is used. Set this when the issuer URL needs different
+	// TLS settings than the control-plane URL (e.g. HTTP CP + HTTPS issuer).
+	RefreshTransport http.RoundTripper
+	Store            TokenStore
+	IssuerURL        string
+	StaticToken      string
+	Stderr           *os.File
+	mu               sync.Mutex
+	warnOnce         sync.Once
 }
 
 func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -99,9 +103,10 @@ func (t *AuthTransport) refreshToken(ctx context.Context, tokenData *TokenData) 
 		RefreshToken: current.RefreshToken,
 	}
 
-	// Use the same TLS-capable transport as API calls. Do not wrap with
-	// AuthTransport — that would re-enter RoundTrip while holding t.mu.
-	refreshClient := &http.Client{Transport: t.base()}
+	// Prefer RefreshTransport when set so issuer TLS (custom CA, mTLS) is
+	// used even if Base was built for an HTTP control-plane URL. Do not wrap
+	// with AuthTransport — that would re-enter RoundTrip while holding t.mu.
+	refreshClient := &http.Client{Transport: t.refreshBase()}
 	refreshCtx := context.WithValue(ctx, oauth2.HTTPClient, refreshClient)
 
 	newToken, err := oauthCfg.TokenSource(refreshCtx, oldToken).Token()
@@ -154,6 +159,13 @@ func (t *AuthTransport) base() http.RoundTripper {
 		return t.Base
 	}
 	return http.DefaultTransport
+}
+
+func (t *AuthTransport) refreshBase() http.RoundTripper {
+	if t.RefreshTransport != nil {
+		return t.RefreshTransport
+	}
+	return t.base()
 }
 
 func cloneRequest(req *http.Request) *http.Request {

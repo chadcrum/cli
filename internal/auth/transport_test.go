@@ -235,6 +235,59 @@ var _ = Describe("AuthTransport", func() {
 			_ = resp.Body.Close()
 			Expect(hits.Load()).To(BeNumerically(">=", 1))
 		})
+
+		It("prefers RefreshTransport over Base for token refresh", func() {
+			tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost && r.FormValue("grant_type") == "refresh_token" {
+					newExp := time.Now().Add(5 * time.Minute)
+					resp := map[string]any{
+						"access_token":  makeJWT(newExp),
+						"refresh_token": "new-refresh-token",
+						"token_type":    "Bearer",
+						"expires_in":    300,
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_ = json.NewEncoder(w).Encode(resp)
+					return
+				}
+				http.Error(w, "unexpected request", http.StatusBadRequest)
+			}))
+			defer tokenServer.Close()
+
+			expiredTD := &auth.TokenData{
+				AccessToken:   makeJWT(time.Now().Add(-1 * time.Minute)),
+				RefreshToken:  "old-refresh-token",
+				Expiry:        time.Now().Add(-1 * time.Minute),
+				TokenEndpoint: tokenServer.URL,
+			}
+			Expect(store.Save("http://keycloak:8080/realms/dcm", expiredTD)).To(Succeed())
+
+			tokenHost := strings.TrimPrefix(strings.TrimPrefix(tokenServer.URL, "https://"), "http://")
+			var baseHits, refreshHits atomic.Int32
+			base := &countingRoundTripper{
+				base:      http.DefaultTransport,
+				hits:      &baseHits,
+				matchHost: tokenHost,
+			}
+			refresh := &countingRoundTripper{
+				base:      http.DefaultTransport,
+				hits:      &refreshHits,
+				matchHost: tokenHost,
+			}
+			transport := &auth.AuthTransport{
+				Base:             base,
+				RefreshTransport: refresh,
+				Store:            store,
+				IssuerURL:        "http://keycloak:8080/realms/dcm",
+			}
+			client := &http.Client{Transport: transport}
+
+			resp, err := client.Get(backend.URL)
+			Expect(err).NotTo(HaveOccurred())
+			_ = resp.Body.Close()
+			Expect(refreshHits.Load()).To(BeNumerically(">=", 1))
+			Expect(baseHits.Load()).To(BeZero())
+		})
 	})
 
 	Describe("Refresh persist failure", func() {
