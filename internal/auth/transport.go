@@ -120,7 +120,7 @@ func (t *AuthTransport) refreshToken(ctx context.Context, tokenData *TokenData) 
 		RefreshToken:  newToken.RefreshToken,
 		IDToken:       idToken,
 		Expiry:        newToken.Expiry,
-		TokenEndpoint: tokenData.TokenEndpoint,
+		TokenEndpoint: current.TokenEndpoint,
 	}
 
 	// Prefer returning the refreshed token even if persist fails. With refresh

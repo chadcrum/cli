@@ -25,6 +25,28 @@ func (s *failSaveStore) Save(_ string, _ *auth.TokenData) error {
 	return s.err
 }
 
+// reloadEndpointStore returns staleEndpoint on the first Load and
+// currentEndpoint on later Loads, simulating another refresh updating
+// the store between the outer RoundTrip load and the locked reload.
+type reloadEndpointStore struct {
+	auth.TokenStore
+	loads           atomic.Int32
+	staleEndpoint   string
+	currentEndpoint string
+	baseTD          *auth.TokenData
+}
+
+func (s *reloadEndpointStore) Load(issuerURL string) (*auth.TokenData, error) {
+	n := s.loads.Add(1)
+	td := *s.baseTD
+	if n == 1 {
+		td.TokenEndpoint = s.staleEndpoint
+	} else {
+		td.TokenEndpoint = s.currentEndpoint
+	}
+	return &td, nil
+}
+
 type countingRoundTripper struct {
 	base      http.RoundTripper
 	hits      *atomic.Int32
@@ -157,6 +179,55 @@ var _ = Describe("AuthTransport", func() {
 			reloaded, err := store.Load("http://keycloak:8080/realms/dcm")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(reloaded.RefreshToken).To(Equal("new-refresh-token"))
+		})
+
+		It("persists TokenEndpoint from the reloaded token under the lock", func() {
+			currentEndpoint := ""
+			tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost && r.FormValue("grant_type") == "refresh_token" {
+					newExp := time.Now().Add(5 * time.Minute)
+					resp := map[string]any{
+						"access_token":  makeJWT(newExp),
+						"refresh_token": "new-refresh-token",
+						"token_type":    "Bearer",
+						"expires_in":    300,
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_ = json.NewEncoder(w).Encode(resp)
+					return
+				}
+				http.Error(w, "unexpected request", http.StatusBadRequest)
+			}))
+			defer tokenServer.Close()
+			currentEndpoint = tokenServer.URL
+
+			baseTD := &auth.TokenData{
+				AccessToken:  makeJWT(time.Now().Add(-1 * time.Minute)),
+				RefreshToken: "old-refresh-token",
+				Expiry:       time.Now().Add(-1 * time.Minute),
+			}
+			wrapped := &reloadEndpointStore{
+				TokenStore:      store,
+				staleEndpoint:   "http://stale.example/token",
+				currentEndpoint: currentEndpoint,
+				baseTD:          baseTD,
+			}
+
+			transport := &auth.AuthTransport{
+				Base:      http.DefaultTransport,
+				Store:     wrapped,
+				IssuerURL: "http://keycloak:8080/realms/dcm",
+			}
+			client := &http.Client{Transport: transport}
+
+			resp, err := client.Get(backend.URL)
+			Expect(err).NotTo(HaveOccurred())
+			_ = resp.Body.Close()
+
+			saved, err := store.Load("http://keycloak:8080/realms/dcm")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(saved).NotTo(BeNil())
+			Expect(saved.TokenEndpoint).To(Equal(currentEndpoint))
 		})
 	})
 
