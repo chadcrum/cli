@@ -147,15 +147,36 @@ func PreferredUsername(accessToken string) string {
 	return claims.PreferredUsername
 }
 
-func openBrowser(url string) error {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", url)
-	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", url)
-	default:
-		cmd = exec.Command("xdg-open", url)
+func openBrowser(rawURL string) error {
+	cmd, err := browserCommand(rawURL)
+	if err != nil {
+		return err
 	}
 	return cmd.Start()
+}
+
+// browserCommand builds the OS-specific command used to open a URL.
+// Only http and https schemes are allowed. On Windows it uses rundll32
+// instead of cmd.exe to avoid shell metacharacter injection.
+func browserCommand(rawURL string) (*exec.Cmd, error) {
+	return browserCommandFor(runtime.GOOS, rawURL)
+}
+
+func browserCommandFor(goos, rawURL string) (*exec.Cmd, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid browser URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, fmt.Errorf("unsupported browser URL scheme %q", u.Scheme)
+	}
+
+	switch goos {
+	case "darwin":
+		return exec.Command("open", rawURL), nil
+	case "windows":
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", rawURL), nil
+	default:
+		return exec.Command("xdg-open", rawURL), nil
+	}
 }

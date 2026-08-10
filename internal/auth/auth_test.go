@@ -180,6 +180,48 @@ var _ = Describe("ClientID", func() {
 	})
 })
 
+var _ = Describe("browserCommand", func() {
+	It("accepts http and https URLs", func() {
+		for _, raw := range []string{
+			"https://keycloak.example.com/device",
+			"http://localhost:8080/device?user_code=ABCD",
+		} {
+			cmd, err := auth.BrowserCommand(raw)
+			Expect(err).NotTo(HaveOccurred(), raw)
+			Expect(cmd).NotTo(BeNil())
+			Expect(cmd.Args).To(ContainElement(raw))
+		}
+	})
+
+	It("rejects non-http schemes", func() {
+		for _, raw := range []string{
+			"file:///etc/passwd",
+			"javascript:alert(1)",
+			"cmd://calc",
+		} {
+			_, err := auth.BrowserCommand(raw)
+			Expect(err).To(HaveOccurred(), raw)
+			Expect(err.Error()).To(ContainSubstring("unsupported browser URL scheme"))
+		}
+	})
+
+	It("rejects URLs without an http(s) scheme", func() {
+		_, err := auth.BrowserCommand("not a url")
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("uses rundll32 on Windows so cmd.exe does not parse the URL", func() {
+		raw := `https://evil.example/x&calc`
+		cmd, err := auth.BrowserCommandFor("windows", raw)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cmd.Args).To(Equal([]string{
+			"rundll32",
+			"url.dll,FileProtocolHandler",
+			raw,
+		}))
+	})
+})
+
 var _ = Describe("PreferredUsername", func() {
 	It("extracts preferred_username from a valid JWT", func() {
 		token := makeJWTWithUsername(time.Now().Add(5*time.Minute), "dcm-admin")
