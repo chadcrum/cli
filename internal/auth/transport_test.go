@@ -36,7 +36,7 @@ type reloadEndpointStore struct {
 	baseTD          *auth.TokenData
 }
 
-func (s *reloadEndpointStore) Load(issuerURL string) (*auth.TokenData, error) {
+func (s *reloadEndpointStore) Load(_ string) (*auth.TokenData, error) {
 	n := s.loads.Add(1)
 	td := *s.baseTD
 	if n == 1 {
