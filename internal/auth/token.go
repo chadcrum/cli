@@ -27,10 +27,6 @@ func (t *TokenData) String() string {
 	return "[REDACTED]"
 }
 
-func (t *TokenData) MarshalLog() string {
-	return "[REDACTED]"
-}
-
 // IsExpired checks whether the access token has expired. It prefers the
 // unverified JWT exp claim, falling back to TokenData.Expiry for opaque
 // tokens. The clockSkew parameter provides a buffer for clock differences.
